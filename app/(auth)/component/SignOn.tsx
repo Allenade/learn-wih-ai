@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import { useDispatch } from "react-redux";
 import {
   Card,
   CardContent,
@@ -6,17 +6,40 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"; // Ensure this path is correct
-import { Input } from "@/components/ui/input"; // Ensure this path is correct
-import { Label } from "@/components/ui/label"; // Ensure this path is correct
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import React, { ChangeEvent, FormEvent, useState } from "react";
+import Google from "./Google"; // Google sign-in component
+import { AppDispatch } from "@/app/redux/store";
+import { signUp } from "@/app/redux/authActions";
+import { useRouter } from "next/navigation";
 
 const SignOn = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter(); // Initialize useRouter for programmatic navigation
+
+  // State to track form data and errors
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirmPassword: "",
   });
+
+  const [errors, setErrors] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const handleGoogleSignIn = async () => {
+    try {
+      // Implement Google sign-in logic if needed
+    } catch (error) {
+      console.error("Google sign-in failed:", error);
+    }
+  };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -25,10 +48,63 @@ const SignOn = () => {
     });
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log("Form Submitted:", formData);
+    let hasErrors = false;
+
+    // Reset errors
+    setErrors({
+      email: "",
+      password: "",
+      confirmPassword: "",
+    });
+
+    // Validation
+    if (!formData.email) {
+      setErrors((prev) => ({ ...prev, email: "Email is required" }));
+      hasErrors = true;
+    }
+
+    if (!formData.password) {
+      setErrors((prev) => ({ ...prev, password: "Password is required" }));
+      hasErrors = true;
+    } else if (formData.password.length < 6) {
+      setErrors((prev) => ({
+        ...prev,
+        password: "Password must be at least 6 characters",
+      }));
+      hasErrors = true;
+    }
+
+    if (!formData.confirmPassword) {
+      setErrors((prev) => ({
+        ...prev,
+        confirmPassword: "Confirm Password is required",
+      }));
+      hasErrors = true;
+    } else if (formData.password !== formData.confirmPassword) {
+      setErrors((prev) => ({
+        ...prev,
+        confirmPassword: "Passwords do not match",
+      }));
+      hasErrors = true;
+    }
+
+    if (hasErrors) return; // Stop form submission if there are errors
+
+    try {
+      const resultAction = await dispatch(
+        signUp({ email: formData.email, password: formData.password })
+      );
+      if (signUp.fulfilled.match(resultAction)) {
+        // Use router to navigate to the inpages directly after successful sign-up
+        router.push("/inpages");
+      } else {
+        throw new Error(resultAction.payload as string);
+      }
+    } catch (error) {
+      console.error("Sign-up failed:", error);
+    }
   };
 
   return (
@@ -37,6 +113,9 @@ const SignOn = () => {
         <form onSubmit={handleSubmit}>
           <Card>
             <CardHeader className="space-y-1">
+              <div className="my-4 text-center">
+                <Google onClick={handleGoogleSignIn} />
+              </div>
               <CardTitle className="text-3xl font-bold">Sign Up</CardTitle>
               <CardDescription>
                 Enter your details to create a new account
@@ -52,7 +131,11 @@ const SignOn = () => {
                   placeholder="name@example.com"
                   value={formData.email}
                   onChange={handleChange}
+                  className={errors.email ? "border-red-500" : ""}
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-sm">{errors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -64,31 +147,39 @@ const SignOn = () => {
                   placeholder="password"
                   value={formData.password}
                   onChange={handleChange}
+                  className={errors.password ? "border-red-500" : ""}
                 />
+                {errors.password && (
+                  <p className="text-red-500 text-sm">{errors.password}</p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmpassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
-                  id="confirmpassword"
+                  id="confirmPassword"
                   name="confirmPassword"
                   type="password"
-                  placeholder="Confirm Password"
+                  placeholder="confirm password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  className={errors.confirmPassword ? "border-red-500" : ""}
                 />
+                {errors.confirmPassword && (
+                  <p className="text-red-500 text-sm">
+                    {errors.confirmPassword}
+                  </p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex flex-col">
-              <Link href="/inpages">
-                <button type="submit" className="btn w-full text-center">
-                  Sign Up
-                </button>
-              </Link>
+              <button type="submit" className="btn w-full text-center">
+                Sign Up
+              </button>
             </CardFooter>
           </Card>
           <div className="mt-4 text-center text-sm">
-            Have an account?
-            <Link href="/signin" className="text-blue-500 underline ml-2">
+            Already have an account?
+            <Link className="underline ml-2" href="/signin">
               Sign in
             </Link>
           </div>

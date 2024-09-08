@@ -2,6 +2,7 @@ import { Button, ButtonProps } from "@/components/ui/button";
 import React from "react";
 import { LucideIcon } from "lucide-react"; // Importing LucideIcon
 import { cn } from "@/lib/utils"; // Assuming cn is a utility function for conditionally joining class names
+import { SheetClose } from "@/components/ui/sheet";
 
 interface SidebarButtonProps extends ButtonProps {
   icon: LucideIcon;
@@ -27,3 +28,11 @@ const SidebarButton = ({
 };
 
 export default SidebarButton;
+
+export function SidebarButtonSheet(props: SidebarButtonProps) {
+  return (
+    <SheetClose>
+      <SidebarButton {...props} />
+    </SheetClose>
+  );
+}

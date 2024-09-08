@@ -10,3 +10,42 @@ export interface SidebarItems {
 
   extras?: ReactNode;
 }
+// types.ts
+export interface Course {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: "Beginner" | "Intermediate" | "Advanced";
+  modules: Module[];
+}
+
+export interface Module {
+  id: string;
+  title: string;
+  description: string;
+  lessons: Lesson[];
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  content: string;
+  quiz?: Quiz;
+}
+
+export interface Quiz {
+  questions: Question[];
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  options: string[];
+  correctAnswer: string;
+}
+interface AuthState {
+  user: { email: string } | null;
+  status: "idle" | "loading" | "failed";
+  error: string | null;
+  isRegistering: boolean; // Add this if it isn't already present
+}
