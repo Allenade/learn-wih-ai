@@ -5,12 +5,16 @@ import {
   advanceModule,
   previousModule,
   setModuleIndex,
+  selectCourse,
 } from "@/app/redux/courseSlice";
-import { getProgress, saveProgress } from "@/app/redux/progressService";
 import { getAuth } from "firebase/auth";
-import Link from "next/link";
 import { dummyCourses } from "@/app/coursesData";
-import { FaRobot } from "react-icons/fa"; // AI icon
+import QuizQuestion from "./QuizQuestion";
+import {
+  getProgressFromLocalStorage,
+  saveProgressToLocalStorage,
+} from "@/app/redux/progressUtils";
+import { evaluateAnswer } from "@/app/redux/geminiAiService";
 
 const CourseDetails = () => {
   const dispatch: AppDispatch = useDispatch();
@@ -23,38 +27,49 @@ const CourseDetails = () => {
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentLessonIndex, setCurrentLessonIndex] = useState<number>(0);
+  const [aiResponse, setAIResponse] = useState<{
+    isCorrect: boolean;
+    correctAnswer: string;
+    explanation: string;
+  } | null>(null);
 
-  // Fetch user email from Firebase auth
   useEffect(() => {
     const auth = getAuth();
     const user = auth.currentUser;
     if (user) {
-      setUserEmail(user.email);
+      setUserEmail(user.email ?? "");
     }
   }, []);
 
-  // Load progress from either local storage or Firestore when component mounts
-  useEffect(() => {
-    const fetchProgress = async () => {
-      if (selectedCourseId && userEmail) {
-        const userProgress = await getProgress(userEmail, selectedCourseId);
-        dispatch(setModuleIndex(userProgress.currentModuleIndex));
-      }
-    };
-    fetchProgress();
-  }, [selectedCourseId, userEmail, dispatch]);
-
-  // Save progress to both local storage and Firestore when module index changes
   useEffect(() => {
     if (selectedCourseId && userEmail) {
-      const progress = { currentModuleIndex };
-      saveProgress(userEmail, selectedCourseId, progress);
+      const progress = getProgressFromLocalStorage(userEmail, selectedCourseId);
+      if (progress !== null) {
+        dispatch(setModuleIndex(progress));
+      }
+    }
+  }, [selectedCourseId, userEmail, dispatch]);
+
+  useEffect(() => {
+    if (selectedCourseId && userEmail !== null) {
+      saveProgressToLocalStorage(
+        userEmail,
+        selectedCourseId,
+        currentModuleIndex
+      );
     }
   }, [currentModuleIndex, selectedCourseId, userEmail]);
 
   if (!selectedCourseId)
     return (
-      <div className="text-center py-10">Select a course to see details.</div>
+      <div className="text-center py-10">
+        <button
+          onClick={() => dispatch(selectCourse(null))}
+          className="bg-gray-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out"
+        >
+          Back to Course List
+        </button>
+      </div>
     );
 
   const course = dummyCourses.find((course) => course.id === selectedCourseId);
@@ -66,26 +81,42 @@ const CourseDetails = () => {
 
   const handleNextModule = () => {
     dispatch(advanceModule());
-    setCurrentLessonIndex(0); // Reset lesson index when moving to the next module
+    setCurrentLessonIndex(0);
   };
 
   const handlePreviousModule = () => {
     dispatch(previousModule());
-    setCurrentLessonIndex(0); // Reset lesson index when moving to the previous module
+    setCurrentLessonIndex(0);
   };
 
   const handleLessonChange = (lessonIndex: number) => {
     setCurrentLessonIndex(lessonIndex);
   };
 
+  const handleAnswerSelected = async (answer: string) => {
+    if (currentLesson?.quiz) {
+      try {
+        const response = await evaluateAnswer(
+          currentLesson.quiz.questions[0].text,
+          answer
+        );
+        setAIResponse(response);
+      } catch (error) {
+        console.error("Failed to evaluate answer", error);
+        setAIResponse(null); // Handle error
+      }
+    }
+  };
+
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
-      <div className="relative flex flex-col justify-center items-center p-4 md:p-8 bg-white w-full max-w-[1200px] shadow-lg border rounded-md">
-        <Link href="/courses">
-          <span className="absolute top-4 left-4 bg-gray-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out cursor-pointer">
-            Back to Course List
-          </span>
-        </Link>
+    <div className="flex flex-col min-h-screen bg-gray-100 p-4">
+      <div className="relative flex flex-col justify-center items-center p-4 md:p-8 bg-white w-full max-w-[1200px] shadow-lg border rounded-md mx-auto">
+        <button
+          onClick={() => dispatch(selectCourse(null))}
+          className="absolute top-4 left-4 bg-gray-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out"
+        >
+          Back to Course List
+        </button>
         <h1 className="text-3xl font-bold mb-6">{course.name}</h1>
         <h2 className="text-xl sm:text-2xl font-semibold mb-4">
           {currentModule.title}
@@ -103,42 +134,57 @@ const CourseDetails = () => {
               <div>
                 <h4 className="text-md font-semibold mb-2">Quiz</h4>
                 {currentLesson.quiz.questions.map((question) => (
-                  <div key={question.id} className="mb-4">
-                    <p className="font-semibold mb-2">{question.text}</p>
-                    <ul className="list-disc pl-5 mb-4">
-                      {question.options.map((option, index) => (
-                        <li key={index} className="mb-1">
-                          {option}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="flex items-center">
-                      <FaRobot className="text-gray-500 mr-2" />
-                      <span className="text-gray-500">
-                        AI will provide answers here.
-                      </span>
+                  <QuizQuestion
+                    key={question.id}
+                    question={question.text}
+                    options={question.options}
+                    onAnswerSelected={handleAnswerSelected}
+                  />
+                ))}
+                {aiResponse && (
+                  <div className="mt-4 p-4 border rounded-md bg-white shadow-md">
+                    {aiResponse.isCorrect ? (
+                      <p className="text-green-500">Correct!</p>
+                    ) : (
+                      <div>
+                        <p className="text-red-500">
+                          Incorrect. The correct answer is:{" "}
+                          {aiResponse.correctAnswer}
+                        </p>
+                        <p>{aiResponse.explanation}</p>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <button
+                        onClick={() => alert("Ask your question here")}
+                        className="bg-blue-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-blue-600 transition duration-300 ease-in-out"
+                      >
+                        Ask a Question
+                      </button>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
         )}
-        <div className="flex gap-4">
-          <button
-            onClick={handlePreviousModule}
-            disabled={currentModuleIndex === 0}
-            className="bg-blue-500 text-white py-2 px-6 rounded-md shadow-lg hover:bg-blue-600 transition duration-300 ease-in-out disabled:bg-gray-400"
-          >
-            Previous Module
-          </button>
-          <button
-            onClick={handleNextModule}
-            disabled={currentModuleIndex === course.modules.length - 1}
-            className="bg-blue-500 text-white py-2 px-6 rounded-md shadow-lg hover:bg-blue-600 transition duration-300 ease-in-out disabled:bg-gray-400"
-          >
-            Next Module
-          </button>
+        <div className="flex justify-between w-full">
+          {currentModuleIndex > 0 && (
+            <button
+              onClick={handlePreviousModule}
+              className="bg-gray-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-gray-600 transition duration-300 ease-in-out"
+            >
+              Previous Module
+            </button>
+          )}
+          {currentModuleIndex < course.modules.length - 1 && (
+            <button
+              onClick={handleNextModule}
+              className="bg-blue-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-blue-600 transition duration-300 ease-in-out"
+            >
+              Next Module
+            </button>
+          )}
         </div>
       </div>
     </div>

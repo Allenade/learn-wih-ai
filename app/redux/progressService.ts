@@ -3,15 +3,21 @@
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/firebase-config";
 
+// Type definition for progress
+interface Progress {
+  currentModuleIndex: number;
+}
+
 // 1. Get progress from local storage
-export const getLocalProgress = (
-  courseId: string
-): { currentModuleIndex: number } | null => {
+export const getLocalProgress = (courseId: string): Progress | null => {
   try {
     const progress = localStorage.getItem(`progress_${courseId}`);
     return progress ? JSON.parse(progress) : null;
   } catch (error) {
-    console.error("Error getting local progress:", error);
+    console.error(
+      `Error getting local progress for courseId ${courseId}:`,
+      error
+    );
     return null;
   }
 };
@@ -19,12 +25,15 @@ export const getLocalProgress = (
 // 2. Save progress to local storage
 export const saveLocalProgress = (
   courseId: string,
-  progress: { currentModuleIndex: number }
-) => {
+  progress: Progress
+): void => {
   try {
     localStorage.setItem(`progress_${courseId}`, JSON.stringify(progress));
   } catch (error) {
-    console.error("Error saving local progress:", error);
+    console.error(
+      `Error saving local progress for courseId ${courseId}:`,
+      error
+    );
   }
 };
 
@@ -32,13 +41,16 @@ export const saveLocalProgress = (
 export const saveFirestoreProgress = async (
   email: string,
   courseId: string,
-  progress: { currentModuleIndex: number }
-) => {
+  progress: Progress
+): Promise<void> => {
   try {
     const progressRef = doc(db, "userProgress", `${email}_${courseId}`);
     await setDoc(progressRef, progress);
   } catch (error) {
-    console.error("Error saving Firestore progress:", error);
+    console.error(
+      `Error saving Firestore progress for ${email} and courseId ${courseId}:`,
+      error
+    );
   }
 };
 
@@ -46,16 +58,19 @@ export const saveFirestoreProgress = async (
 export const getFirestoreProgress = async (
   email: string,
   courseId: string
-): Promise<{ currentModuleIndex: number } | null> => {
+): Promise<Progress | null> => {
   try {
     const progressRef = doc(db, "userProgress", `${email}_${courseId}`);
     const docSnap = await getDoc(progressRef);
     if (docSnap.exists()) {
-      return docSnap.data() as { currentModuleIndex: number };
+      return docSnap.data() as Progress;
     }
     return null;
   } catch (error) {
-    console.error("Error getting Firestore progress:", error);
+    console.error(
+      `Error getting Firestore progress for ${email} and courseId ${courseId}:`,
+      error
+    );
     return null;
   }
 };
@@ -64,38 +79,53 @@ export const getFirestoreProgress = async (
 export const getProgress = async (
   email: string | null,
   courseId: string
-): Promise<{ currentModuleIndex: number }> => {
+): Promise<Progress> => {
   try {
+    // Try to get progress from local storage first
     let progress = getLocalProgress(courseId);
 
+    // If no local progress and user is authenticated, try Firestore
     if (!progress && email) {
-      const firestoreProgress = await getFirestoreProgress(email, courseId);
-      if (firestoreProgress) {
-        progress = firestoreProgress;
+      progress = await getFirestoreProgress(email, courseId);
+
+      // If progress is found in Firestore, save it locally
+      if (progress) {
         saveLocalProgress(courseId, progress);
       }
     }
 
+    // Default progress if none is found
     return progress || { currentModuleIndex: 0 };
   } catch (error) {
-    console.error("Error retrieving progress:", error);
+    console.error(`Error retrieving progress for courseId ${courseId}:`, error);
     return { currentModuleIndex: 0 };
   }
+};
+// To be called when the user progresses in a course
+export const updateCourseProgress = async (
+  email: string | null,
+  courseId: string,
+  newModuleIndex: number
+): Promise<void> => {
+  const progress = { currentModuleIndex: newModuleIndex };
+  await saveProgress(email, courseId, progress);
 };
 
 // 6. Save progress both locally and remotely (if online)
 export const saveProgress = async (
   email: string | null,
   courseId: string,
-  progress: { currentModuleIndex: number }
-) => {
+  progress: Progress
+): Promise<void> => {
   try {
+    // Save to local storage first
     saveLocalProgress(courseId, progress);
 
+    // If user is authenticated, save to Firestore
     if (email) {
       await saveFirestoreProgress(email, courseId, progress);
     }
   } catch (error) {
-    console.error("Error saving progress:", error);
+    console.error(`Error saving progress for courseId ${courseId}:`, error);
   }
 };

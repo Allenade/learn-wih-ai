@@ -10,26 +10,37 @@ const HomeContent = () => {
     (state: RootState) => state.course.selectedCourseId
   );
   const [progress, setProgress] = useState<any>(null);
-  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (user) {
-      setUserEmail(user.email || "");
+    // Retrieve username from localStorage
+    const storedUserName = localStorage.getItem("userName");
+
+    if (storedUserName) {
+      setUserName(storedUserName);
+    } else {
+      // If not in localStorage, get from Firebase and store it
+      const auth = getAuth();
+      const user = auth.currentUser;
+      if (user) {
+        const email = user.email || "";
+        const name = email.split("@")[0];
+        setUserName(name);
+        localStorage.setItem("userName", name); // Save username to localStorage
+      }
     }
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId && userEmail) {
+    if (selectedCourseId && userName) {
       const fetchProgress = async () => {
-        const userProgress = await getProgress(userEmail, selectedCourseId);
+        const userProgress = await getProgress(userName, selectedCourseId);
         setProgress(userProgress);
       };
 
       fetchProgress();
     }
-  }, [selectedCourseId, userEmail]);
+  }, [selectedCourseId, userName]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
@@ -37,7 +48,7 @@ const HomeContent = () => {
         <h1 className="text-4xl font-bold mb-4">
           Welcome to Your Learning Journey!
         </h1>
-        {userEmail && <p className="text-lg mb-4">Logged in as: {userEmail}</p>}
+        {userName && <p className="text-lg mb-4">Logged in as: {userName}</p>}
         {selectedCourseId ? (
           <div>
             <h2 className="text-2xl font-semibold mb-4">Your Progress</h2>
@@ -65,7 +76,10 @@ const HomeContent = () => {
             No course selected. Get started to begin your journey!
           </p>
         )}
-        <Link href="/courses">
+        <Link
+          href="./courses
+        "
+        >
           <span className="text-lg font-semibold text-blue-500 hover:text-blue-700 underline">
             View Available Courses
           </span>

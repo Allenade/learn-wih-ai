@@ -9,6 +9,7 @@ import {
 import { auth } from "../firebase/firebase-config";
 
 interface AuthState {
+  userEmail: any;
   user: { email: string } | null;
   status: "idle" | "loading" | "failed";
   error: string | null;
@@ -19,7 +20,8 @@ const initialState: AuthState = {
   user: null,
   status: "idle",
   error: null,
-  isRegistering: false, // Initialize as false
+  isRegistering: false,
+  userEmail: undefined,
 };
 
 interface SignInPayload {

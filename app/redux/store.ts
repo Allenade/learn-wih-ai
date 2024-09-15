@@ -1,23 +1,25 @@
 import { configureStore } from "@reduxjs/toolkit";
 import courseReducer from "./courseSlice";
-import authReducer from "./authSlice"; // Assuming authSlice handles Firebase authentication logic
+import authReducer from "./authSlice";
+import navigationReducer from "./navigationSlice";
+import aiReducer from "./aiSlice"; // Import the AI slice
 import { useDispatch, useSelector } from "react-redux";
 
-// Configure the Redux store
+// Configure your Redux store
 export const store = configureStore({
   reducer: {
     course: courseReducer,
-    auth: authReducer, // Add the auth slice to the store
+    auth: authReducer,
+    navigation: navigationReducer,
+    ai: aiReducer, // Add the AI slice to the store
   },
 });
 
-// Infer the `RootState` and `AppDispatch` types from the store itself
+// Define types for state and dispatch
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
-// Optional: you can also create a custom hook for using the dispatch type
-// to ensure consistent typing throughout your app
-export const useAppDispatch: () => AppDispatch = useDispatch;
-export const useAppSelector: <T>(
-  selector: (state: RootState) => T
-) => T = useSelector;
+// Custom hooks for using dispatch and selector with types
+export const useAppDispatch = () => useDispatch<AppDispatch>();
+export const useAppSelector = <T>(selector: (state: RootState) => T): T =>
+  useSelector(selector);
