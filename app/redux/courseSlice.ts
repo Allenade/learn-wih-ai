@@ -16,6 +16,9 @@ const initialState: CourseState = {
   currentModuleIndex: savedProgress
     ? JSON.parse(savedProgress).currentModuleIndex
     : 0,
+  courses: function(courses: any): unknown {
+    throw new Error("Function not implemented.");
+  },
 };
 
 const courseSlice = createSlice({

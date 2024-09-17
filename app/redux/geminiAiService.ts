@@ -1,33 +1,72 @@
-// export const evaluateAnswer = async (question: string, answer: string) => {
+// import axios from "axios";
+
+// // Service to evaluate the user's answer using the AI API
+// export const evaluateAnswer = async (
+//   question: string,
+//   answer: string,
+//   courseId: string
+// ) => {
 //   try {
-//     const response = await fetch("/api/evaluate", {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({ question, answer }),
+//     const response = await axios.post("/api/evaluate", {
+//       question,
+//       answer,
+//       courseId,
 //     });
 
-//     if (!response.ok) {
-//       throw new Error(`HTTP error! status: ${response.status}`);
-//     }
-
-//     const data = await response.json();
-//     return data;
+//     return response.data; // Return the AI response data
 //   } catch (error) {
-//     console.error("Failed to evaluate answer", error);
+//     console.error("Error in evaluateAnswer function:", error);
 //     throw error;
 //   }
 // };
-// geminiAiService.ts
+// import axios from "axios";
+
+// // Service to evaluate the user's answer using the AI API
+// export const evaluateAnswer = async (
+//   question: string,
+//   answer: string,
+//   courseId: string
+// ) => {
+//   try {
+//     console.log("Sending to API - Question:", question);
+//     console.log("Sending to API - Answer:", answer);
+//     console.log("Sending to API - Course ID:", courseId);
+
+//     const response = await axios.post("/api/evaluate", {
+//       question,
+//       answer,
+//       courseId,
+//     });
+
+//     return response.data; // Return the AI response data
+//   } catch (error) {
+//     console.error("Error in evaluateAnswer function:", error);
+//     throw error;
+//   }
+// };
 import axios from "axios";
 
-export const evaluateAnswer = async (question: string, answer: string) => {
+// Service to evaluate the user's answer using the AI API
+export const evaluateAnswer = async (
+  question: string,
+  answer: string,
+  courseId: string
+) => {
   try {
-    const response = await axios.post("/api/evaluate", { question, answer });
-    return response.data;
+    // Log the values to ensure they are being passed correctly
+    console.log("Sending to API - Question:", question);
+    console.log("Sending to API - Answer:", answer);
+    console.log("Sending to API - Course ID:", courseId);
+
+    const response = await axios.post("/api/evaluate", {
+      question,
+      answer,
+      courseId,
+    });
+
+    return response.data; // Return the AI response data
   } catch (error) {
-    console.error("Error evaluating answer", error);
-    throw error;
+    console.error("Error in evaluateAnswer function:", error);
+    throw error; // Propagate the error so it can be handled in the UI
   }
 };

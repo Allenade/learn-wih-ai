@@ -27,12 +27,9 @@ const CourseDetails = () => {
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentLessonIndex, setCurrentLessonIndex] = useState<number>(0);
-  const [aiResponse, setAIResponse] = useState<{
-    isCorrect: boolean;
-    correctAnswer: string;
-    explanation: string;
-  } | null>(null);
-
+  const [quizCompleted, setQuizCompleted] = useState<boolean>(false);
+  const [attempts, setAttempts] = useState<number>(0); // Track attempts
+  const [aiFeedbackReceived, setAiFeedbackReceived] = useState<boolean>(false);
   useEffect(() => {
     const auth = getAuth();
     const user = auth.currentUser;
@@ -78,34 +75,63 @@ const CourseDetails = () => {
 
   const currentModule = course.modules[currentModuleIndex];
   const currentLesson = currentModule.lessons[currentLessonIndex];
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+
+  // Updated function to handle answer selection and AI evaluation
+  const handleAnswerSelected = async (
+    selectedOption: string,
+    courseId: string
+  ) => {
+    if (currentLesson?.quiz) {
+      try {
+        // Call the AI to evaluate the selected answer, passing courseId
+        const response = await evaluateAnswer(
+          currentLesson.quiz.questions[0].text, // Send question to AI
+          selectedOption, // Send user's selected option
+          courseId // Pass the course ID to the AI
+        );
+
+        // Increment attempt count
+        setAttempts(attempts + 1);
+
+        if (response.isCorrect) {
+          // If the answer is correct, mark the quiz as completed
+          setQuizCompleted(true);
+          setAiFeedbackReceived(false); // No need for AI feedback
+        } else if (attempts >= 1) {
+          // If the second attempt fails, show AI feedback
+          setAiFeedbackReceived(true);
+          setQuizCompleted(true); // Allow proceeding after AI feedback
+        }
+
+        return response; // Return the AI evaluation result
+      } catch (error) {
+        console.error("Failed to evaluate answer", error);
+        return null;
+      }
+    }
+  };
 
   const handleNextModule = () => {
-    dispatch(advanceModule());
-    setCurrentLessonIndex(0);
+    // Allow the user to proceed if:
+    // 1. The quiz is completed (either by a correct answer or after AI feedback).
+    // 2. If AI has provided feedback after two failed attempts.
+    if (quizCompleted || aiFeedbackReceived) {
+      dispatch(advanceModule());
+      setCurrentLessonIndex(0);
+      setQuizCompleted(false); // Reset for next module
+      setAttempts(0); // Reset attempts for the next module
+      setAiFeedbackReceived(false); // Reset AI feedback flag
+    } else {
+      alert(
+        "You must complete the quiz or see AI feedback before moving to the next module."
+      );
+    }
   };
 
   const handlePreviousModule = () => {
     dispatch(previousModule());
     setCurrentLessonIndex(0);
-  };
-
-  const handleLessonChange = (lessonIndex: number) => {
-    setCurrentLessonIndex(lessonIndex);
-  };
-
-  const handleAnswerSelected = async (answer: string) => {
-    if (currentLesson?.quiz) {
-      try {
-        const response = await evaluateAnswer(
-          currentLesson.quiz.questions[0].text,
-          answer
-        );
-        setAIResponse(response);
-      } catch (error) {
-        console.error("Failed to evaluate answer", error);
-        setAIResponse(null); // Handle error
-      }
-    }
   };
 
   return (
@@ -138,32 +164,10 @@ const CourseDetails = () => {
                     key={question.id}
                     question={question.text}
                     options={question.options}
-                    onAnswerSelected={handleAnswerSelected}
+                    courseId={selectedCourseId} // Pass courseId to QuizQuestion
+                    onAnswerSelected={handleAnswerSelected} // Use the updated function
                   />
                 ))}
-                {aiResponse && (
-                  <div className="mt-4 p-4 border rounded-md bg-white shadow-md">
-                    {aiResponse.isCorrect ? (
-                      <p className="text-green-500">Correct!</p>
-                    ) : (
-                      <div>
-                        <p className="text-red-500">
-                          Incorrect. The correct answer is:{" "}
-                          {aiResponse.correctAnswer}
-                        </p>
-                        <p>{aiResponse.explanation}</p>
-                      </div>
-                    )}
-                    <div className="mt-2">
-                      <button
-                        onClick={() => alert("Ask your question here")}
-                        className="bg-blue-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-blue-600 transition duration-300 ease-in-out"
-                      >
-                        Ask a Question
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
