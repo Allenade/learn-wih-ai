@@ -32,18 +32,18 @@ const Option = () => {
           <Link href="/dashboard">
             <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center cursor-pointer hover:bg-gray-300 transition">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-                Ruby
+                Advanced JavaScript
               </h2>
             </div>
           </Link>
-
+          {/* 
           <Link href="/dashboard">
             <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center cursor-pointer hover:bg-gray-300 transition">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                 Java
               </h2>
             </div>
-          </Link>
+          </Link> */}
         </div>
 
         <Link href="/dashboard">
