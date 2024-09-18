@@ -12,27 +12,40 @@ const Option = () => {
         </Link>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-2/3 h-2/3">
-          <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Javascript
-            </h2>
-          </div>
-          <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Python
-            </h2>
-          </div>
-          <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Ruby
-            </h2>
-          </div>
-          <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Java
-            </h2>
-          </div>
+          {/* Link each option to the dashboard */}
+          <Link href="/dashboard">
+            <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center cursor-pointer hover:bg-gray-300 transition">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                Javascript
+              </h2>
+            </div>
+          </Link>
+
+          <Link href="/dashboard">
+            <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center cursor-pointer hover:bg-gray-300 transition">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                Python
+              </h2>
+            </div>
+          </Link>
+
+          <Link href="/dashboard">
+            <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center cursor-pointer hover:bg-gray-300 transition">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                Ruby
+              </h2>
+            </div>
+          </Link>
+
+          <Link href="/dashboard">
+            <div className="bg-gray-200 p-4 sm:p-6 rounded-md shadow-lg flex items-center justify-center text-center cursor-pointer hover:bg-gray-300 transition">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                Java
+              </h2>
+            </div>
+          </Link>
         </div>
+
         <Link href="/dashboard">
           <div className="absolute top-4 right-4 md:top-8 md:right-8 bg-gray-300 p-2 rounded-md shadow-lg cursor-pointer">
             <span>Skip</span>
