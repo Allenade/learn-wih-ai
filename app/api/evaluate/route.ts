@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { dummyCourses } from "@/app/coursesData"; // Import course data
+import { dummyCourses } from "@/app/coursesData"; // Assuming course data is here
 
+// Set up the Google Generative AI API key
 const apiKey =
   process.env.GEMINI_API_KEY || "AIzaSyDZs8k3GizX_3pNv0KDj5lOTH9Q8dhMh1Q";
 
@@ -26,32 +27,54 @@ export async function POST(req: Request) {
   try {
     console.log("POST request received at /api/evaluate");
 
-    // Parse the request body to get the data
+    // Parse the request body to get the question, answer, and courseId
     const body = await req.json();
-    const { question, answer, courseId } = body;
+    const { question, answer, courseId, feedbackRequest = false } = body;
 
     // Log the incoming data for debugging
     console.log("Received data from client:", { question, answer, courseId });
 
-    // Validate incoming fields
-    if (!question || !answer || !courseId) {
-      console.error("Missing required fields:", { question, answer, courseId });
+    // Validate the incoming data
+    if (!question || !courseId) {
+      console.error("Missing required fields:", { question, courseId });
       return NextResponse.json(
-        {
-          error: "Missing required fields: question, answer, or courseId",
-        },
+        { error: "Missing required fields: question or courseId" },
         { status: 400 }
       );
     }
 
-    // Find the course by courseId
+    // Handle course completion feedback request
+    if (feedbackRequest) {
+      const finalFeedback = `Thank you for completing the course! Here is your feedback for course "${courseId}".`;
+
+      // Send a custom prompt to AI for detailed feedback
+      const feedbackPrompt = `Provide a performance summary for a user who completed the course "${courseId}". Include improvement areas, strengths, and an overall evaluation of their progress.`;
+
+      const chatSession = model.startChat({ generationConfig, history: [] });
+      const result = await chatSession.sendMessage(feedbackPrompt);
+
+      if (!result || !result.response) {
+        throw new Error("Failed to get a valid response from the AI.");
+      }
+
+      const responseText = await result.response.text();
+
+      // Log AI response text
+      console.log("AI final feedback response:", responseText);
+
+      return NextResponse.json({
+        isCorrect: true,
+        correctAnswer: "",
+        explanation: responseText.trim() || finalFeedback,
+      });
+    }
+
+    // For regular question-answer evaluation
     const course = dummyCourses.find((course) => course.id === courseId);
     if (!course) {
       console.error(`Course with id "${courseId}" not found.`);
       return NextResponse.json(
-        {
-          error: `Course with id "${courseId}" not found.`,
-        },
+        { error: `Course with id "${courseId}" not found.` },
         { status: 404 }
       );
     }
@@ -60,13 +83,13 @@ export async function POST(req: Request) {
     let explanation = "";
     let found = false;
 
-    // Search for the correct answer in the course's lessons and modules
+    // Search for the correct answer within the course's lessons
     course.modules.forEach((module) => {
       module.lessons.forEach((lesson) => {
         lesson.quiz?.questions.forEach((quizQuestion) => {
           if (quizQuestion.text === question) {
             correctAnswer = quizQuestion.correctAnswer;
-            explanation = lesson.content; // Use lesson content for explanation
+            explanation = lesson.content; // Use the lesson content as explanation
             found = true;
           }
         });
@@ -78,18 +101,12 @@ export async function POST(req: Request) {
         `Question "${question}" not found in course "${courseId}".`
       );
       return NextResponse.json(
-        {
-          error: `Question "${question}" not found in course "${courseId}".`,
-        },
+        { error: `Question "${question}" not found in course "${courseId}".` },
         { status: 404 }
       );
     }
 
-    // Log the correct answer and explanation
-    console.log("Correct Answer Found:", correctAnswer);
-    console.log("Explanation:", explanation);
-
-    // If the answer is correct, return immediately
+    // If the answer is correct, return the success message
     if (answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) {
       console.log("Answer is correct.");
       return NextResponse.json({
@@ -99,20 +116,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // Otherwise, use the AI to explain why the answer is wrong
-    const prompt = `Evaluate the following answer to the question: "${question}". The provided answer is: "${answer}". The correct answer is: "${correctAnswer}". Provide feedback on why the answer is wrong and offer an explanation based on the lesson content: "${explanation}".`;
+    // Otherwise, send a detailed prompt to the AI explaining the incorrect answer
+    const prompt = `Evaluate the following answer to the question: "${question}". The user's provided answer is: "${answer}", but the correct answer is: "${correctAnswer}". Explain why the answer is wrong and provide insights based on the lesson content: "${explanation}".`;
 
     console.log("Sending prompt to AI:", prompt);
 
-    const chatSession = model.startChat({
-      generationConfig,
-      history: [],
-    });
-
+    const chatSession = model.startChat({ generationConfig, history: [] });
     const result = await chatSession.sendMessage(prompt);
-
-    // Log the result of the AI call
-    console.log("Received response from AI:", result);
 
     if (!result || !result.response) {
       throw new Error("Failed to get a valid response from the AI.");
@@ -120,28 +130,16 @@ export async function POST(req: Request) {
 
     const responseText = await result.response.text();
 
-    // Log the AI response text
+    // Log AI response text
     console.log("AI response text:", responseText);
 
-    // Parse the AI response and return it
-    const responseLines = responseText
-      .trim()
-      .split("\n")
-      .filter(Boolean);
-    if (responseLines.length < 2) {
-      console.error("Invalid AI response format.");
-      throw new Error("Invalid AI response format.");
-    }
-
-    const explanationText = responseLines.slice(1).join(" ");
-
-    console.log("Returning final response to client.");
     return NextResponse.json({
       isCorrect: false,
       correctAnswer,
-      explanation: explanationText.trim() || explanation.trim(),
+      explanation: responseText.trim() || explanation.trim(),
     });
   } catch (error) {
+    // Type-check the error
     if (error instanceof Error) {
       console.error("Error evaluating answer:", error.message);
       return NextResponse.json(
