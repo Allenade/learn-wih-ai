@@ -4,7 +4,10 @@ import React, { useEffect, useState } from "react";
 import { selectCourse } from "@/app/redux/courseSlice";
 import { dummyCourses } from "@/app/coursesData";
 import { useAppDispatch, useAppSelector } from "@/app/redux/store";
-import { getProgress, updateCourseProgress } from "@/app/redux/progressService";
+import {
+  getFirestoreProgress,
+  saveFirestoreProgress,
+} from "@/app/redux/progressService";
 
 const CourseList = () => {
   const dispatch = useAppDispatch();
@@ -13,13 +16,20 @@ const CourseList = () => {
   }>({});
   const userEmail = useAppSelector((state) => state.auth.userEmail); // Assumes userEmail is managed in authSlice
 
+  // Fetch course progress from Firestore
   useEffect(() => {
     const fetchCourseProgress = async () => {
       try {
         const progressData: { [key: string]: number } = {};
         for (const course of dummyCourses) {
-          const progress = await getProgress(userEmail, course.id);
-          progressData[course.id] = (progress.currentModuleIndex / 10) * 100; // Assuming 10 modules
+          const progress = await getFirestoreProgress(userEmail, course.id);
+          if (progress) {
+            // Assuming each course has 10 modules, and we calculate percentage
+            progressData[course.id] = (progress.currentModuleIndex / 10) * 100;
+          } else {
+            // If no progress, set to 0%
+            progressData[course.id] = 0;
+          }
         }
         setCourseProgress(progressData);
       } catch (error) {
@@ -32,10 +42,12 @@ const CourseList = () => {
     }
   }, [userEmail]);
 
-  const handleCourseClick = (courseId: string) => {
+  const handleCourseClick = async (courseId: string) => {
     dispatch(selectCourse(courseId));
-    // Optionally, update course progress if needed
-    // updateCourseProgress(userEmail, courseId, 1); // Replace with actual progress update logic
+
+    // Save initial progress when a course is clicked
+    const progress = { currentModuleIndex: 1 }; // You can change this logic to update based on actual progress
+    await saveFirestoreProgress(userEmail, courseId, progress);
   };
 
   return (
@@ -53,7 +65,7 @@ const CourseList = () => {
               >
                 View Details
               </button>
-              {courseProgress[course.id] && (
+              {courseProgress[course.id] !== undefined && (
                 <p className="mt-2 text-gray-500">
                   Progress: {courseProgress[course.id].toFixed(2)}%
                 </p>
