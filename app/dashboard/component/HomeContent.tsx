@@ -2,10 +2,62 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/app/redux/store";
 import Link from "next/link";
-import { getProgress } from "@/app/redux/progressService";
 import { getAuth } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/app/firebase/firebase-config";
 
-const HomeContent = () => {
+// Fetch progress from Firestore
+const fetchProgressFromFirestore = async (email: string, courseId: string) => {
+  try {
+    const progressDocRef = doc(db, "userProgress", `${email}_${courseId}`);
+    const progressDocSnap = await getDoc(progressDocRef);
+
+    if (progressDocSnap.exists()) {
+      return progressDocSnap.data();
+    } else {
+      console.log("No progress found.");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching progress from Firestore:", error);
+    return null;
+  }
+};
+
+// Save progress to Firestore
+const saveProgressToFirestore = async (
+  email: string,
+  courseId: string,
+  progress: any
+) => {
+  try {
+    const progressDocRef = doc(db, "userProgress", `${email}_${courseId}`);
+    await setDoc(progressDocRef, progress, { merge: true });
+  } catch (error) {
+    console.error("Error saving progress to Firestore:", error);
+  }
+};
+
+// Fetch user name from Firestore
+const fetchUserNameFromFirestore = async (email: string) => {
+  try {
+    const userDocRef = doc(db, "users", email);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+      return userDocSnap.data()?.userName;
+    } else {
+      const userName = email.split("@")[0]; // Default to email prefix if username not found
+      await setDoc(userDocRef, { userName });
+      return userName;
+    }
+  } catch (error) {
+    console.error("Error fetching user name from Firestore:", error);
+    return null;
+  }
+};
+
+const HomeContent: React.FC = () => {
   const selectedCourseId = useSelector(
     (state: RootState) => state.course.selectedCourseId
   );
@@ -13,28 +65,31 @@ const HomeContent = () => {
   const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
-    // Retrieve username from localStorage
-    const storedUserName = localStorage.getItem("userName");
+    const auth = getAuth();
+    const user = auth.currentUser;
 
-    if (storedUserName) {
-      setUserName(storedUserName);
-    } else {
-      // If not in localStorage, get from Firebase and store it
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if (user) {
-        const email = user.email || "";
-        const name = email.split("@")[0];
-        setUserName(name);
-        localStorage.setItem("userName", name); // Save username to localStorage
-      }
+    if (user) {
+      const email = user.email || "";
+
+      // Fetch user name from Firestore
+      const fetchUserData = async () => {
+        const fetchedUserName = await fetchUserNameFromFirestore(email);
+        if (fetchedUserName) {
+          setUserName(fetchedUserName);
+        }
+      };
+
+      fetchUserData();
     }
   }, []);
 
   useEffect(() => {
     if (selectedCourseId && userName) {
       const fetchProgress = async () => {
-        const userProgress = await getProgress(userName, selectedCourseId);
+        const userProgress = await fetchProgressFromFirestore(
+          userName,
+          selectedCourseId
+        );
         setProgress(userProgress);
       };
 
@@ -76,10 +131,7 @@ const HomeContent = () => {
             No course selected. Get started to begin your journey!
           </p>
         )}
-        <Link
-          href="./courses
-        "
-        >
+        <Link href="/courses">
           <span className="text-lg font-semibold text-blue-500 hover:text-blue-700 underline">
             View Available Courses
           </span>

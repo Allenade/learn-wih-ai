@@ -12,6 +12,7 @@ export interface SidebarItems {
 }
 // types.ts
 export interface Course {
+  lessons: any;
   id: string;
   name: string;
   description: string;
@@ -27,6 +28,7 @@ export interface Module {
 }
 
 export interface Lesson {
+  description: ReactNode;
   id: string;
   title: string;
   content: string;
