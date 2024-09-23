@@ -191,6 +191,7 @@ export const dummyCourses: Course[] = [
         ],
       },
     ],
+    lessons: undefined,
   },
   {
     id: "2",
@@ -373,6 +374,7 @@ export const dummyCourses: Course[] = [
         ],
       },
     ],
+    lessons: undefined,
   },
   {
     id: "3",
@@ -543,5 +545,6 @@ export const dummyCourses: Course[] = [
         ],
       },
     ],
+    lessons: undefined,
   },
 ];
