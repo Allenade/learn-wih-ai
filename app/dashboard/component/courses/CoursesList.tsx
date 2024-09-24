@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { selectCourse } from "@/app/redux/courseSlice";
-import { dummyCourses } from "@/app/coursesData";
+import { dummyCourses } from "@/app/coursesData"; // Ensure this is being imported correctly
 import { useAppDispatch, useAppSelector } from "@/app/redux/store";
 import {
   getFirestoreProgress,
@@ -14,9 +14,9 @@ const CourseList = () => {
   const [courseProgress, setCourseProgress] = useState<{
     [key: string]: number;
   }>({});
-  const userEmail = useAppSelector((state) => state.auth.userEmail); // Assumes userEmail is managed in authSlice
+  const userEmail = useAppSelector((state) => state.auth.userEmail);
 
-  // Fetch course progress from Firestore
+  // Fetch course progress from Firestore or use 0% if not found
   useEffect(() => {
     const fetchCourseProgress = async () => {
       try {
@@ -24,14 +24,12 @@ const CourseList = () => {
         for (const course of dummyCourses) {
           const progress = await getFirestoreProgress(userEmail, course.id);
           if (progress) {
-            // Assuming each course has 10 modules, and we calculate percentage
             progressData[course.id] = (progress.currentModuleIndex / 10) * 100;
           } else {
-            // If no progress, set to 0%
-            progressData[course.id] = 0;
+            progressData[course.id] = 0; // Default to 0% if no progress found
           }
         }
-        setCourseProgress(progressData);
+        setCourseProgress(progressData); // This ensures progress shows correctly
       } catch (error) {
         console.error("Error fetching course progress:", error);
       }
@@ -42,12 +40,18 @@ const CourseList = () => {
     }
   }, [userEmail]);
 
+  // Handle when a course is clicked
   const handleCourseClick = async (courseId: string) => {
     dispatch(selectCourse(courseId));
 
-    // Save initial progress when a course is clicked
-    const progress = { currentModuleIndex: 1 }; // You can change this logic to update based on actual progress
-    await saveFirestoreProgress(userEmail, courseId, progress);
+    // Save initial progress only if there's no existing progress
+    const progress = await getFirestoreProgress(userEmail, courseId);
+
+    // Initialize progress if none exists
+    if (!progress) {
+      const initialProgress = { currentModuleIndex: 0, currentLessonIndex: 0 };
+      await saveFirestoreProgress(userEmail, courseId, initialProgress);
+    }
   };
 
   return (

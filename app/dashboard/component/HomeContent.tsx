@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/app/redux/store";
 import Link from "next/link";
 import { getAuth } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/app/firebase/firebase-config";
+import { selectCourse } from "@/app/redux/courseSlice"; // Import to manage course selection
 
 // Fetch progress from Firestore
 const fetchProgressFromFirestore = async (email: string, courseId: string) => {
@@ -63,6 +64,8 @@ const HomeContent: React.FC = () => {
   );
   const [progress, setProgress] = useState<any>(null);
   const [userName, setUserName] = useState<string>("");
+  const [lastCourseId, setLastCourseId] = useState<string | null>(null);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const auth = getAuth();
@@ -81,21 +84,42 @@ const HomeContent: React.FC = () => {
 
       fetchUserData();
     }
+
+    // Get the last selected course ID from localStorage
+    const savedCourseId = localStorage.getItem("lastSelectedCourseId");
+    if (savedCourseId) {
+      setLastCourseId(savedCourseId);
+    }
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId && userName) {
+    const courseId = selectedCourseId || lastCourseId;
+
+    if (courseId && userName) {
       const fetchProgress = async () => {
         const userProgress = await fetchProgressFromFirestore(
           userName,
-          selectedCourseId
+          courseId
         );
         setProgress(userProgress);
       };
 
       fetchProgress();
+
+      // Save the current selected course ID to localStorage
+      if (selectedCourseId) {
+        localStorage.setItem("lastSelectedCourseId", selectedCourseId);
+      }
     }
-  }, [selectedCourseId, userName]);
+  }, [selectedCourseId, lastCourseId, userName]);
+
+  // Handle end course and reset progress
+  const handleEndCourse = () => {
+    // Clear course selection and progress
+    localStorage.removeItem("lastSelectedCourseId");
+    dispatch(selectCourse(null));
+    setProgress(null);
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
@@ -104,7 +128,7 @@ const HomeContent: React.FC = () => {
           Welcome to Your Learning Journey!
         </h1>
         {userName && <p className="text-lg mb-4">Logged in as: {userName}</p>}
-        {selectedCourseId ? (
+        {selectedCourseId || lastCourseId ? (
           <div>
             <h2 className="text-2xl font-semibold mb-4">Your Progress</h2>
             <div className="w-full bg-gray-300 rounded-full h-6 mb-4">
@@ -125,12 +149,22 @@ const HomeContent: React.FC = () => {
             <p className="text-lg mb-6">
               Keep pushing forward and embrace every challenge!
             </p>
+
+            {/* New End Course button */}
+            <button
+              onClick={handleEndCourse}
+              className="bg-red-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-red-600 transition duration-300 ease-in-out"
+            >
+              End Course
+            </button>
           </div>
         ) : (
           <p className="text-lg mb-6">
             No course selected. Get started to begin your journey!
           </p>
         )}
+
+        {/* Back to List button (no clearing progress) */}
         <Link href="/courses">
           <span className="text-lg font-semibold text-blue-500 hover:text-blue-700 underline">
             View Available Courses
